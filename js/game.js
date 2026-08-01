@@ -504,10 +504,23 @@
       objs.push({
         id: "window",
         x: 5.5 * T,
-        y: 3.2 * T,
-        r: 16,
+        y: 1.5 * T,
+        r: 22,
         label: "Окно",
-        draw() {},
+        draw: (x, y) => ctx.drawImage(S.izbaWindow, x - 8, y - 8),
+        use() {
+          AudioSFX.interact();
+          talk("window");
+        },
+      });
+      // второе окно симметрично
+      objs.push({
+        id: "window2",
+        x: 10.5 * T,
+        y: 1.5 * T,
+        r: 22,
+        label: "Окно",
+        draw: (x, y) => ctx.drawImage(S.izbaWindow, x - 8, y - 8),
         use() {
           AudioSFX.interact();
           talk("window");
@@ -1546,25 +1559,33 @@
         }
       }
 
-      // узоры только на брёвнах стен (H), не посреди пола
+      // узоры на брёвнах: 2 мотива через один, симметрично
       if (st.act === "izba" && CP) {
-        const wallOrn = [
-          { tx: 3, ty: 1, id: "snezhinka3", scale: 1.1 },
-          { tx: 12, ty: 1, id: "tree", scale: 1.0 },
-          { tx: 1, ty: 4, id: "center", scale: 1.2 },
-          { tx: 14, ty: 5, id: "serdtse", scale: 1.0 },
-        ];
-        ctx.globalAlpha = 0.75;
-        for (const o of wallOrn) {
-          if (cell(o.tx, o.ty) !== "H") continue;
-          CP.draw(ctx, o.id, {
+        const motifs = ["serdtse", "center"];
+        const spots = [];
+        // верх (окна на 5 и 10 — узоры по краям и в центре)
+        [2, 3, 8, 13, 14].forEach((tx) => {
+          if (cell(tx, 1) === "H") spots.push({ tx, ty: 1 });
+        });
+        // бока через один
+        for (let ty = 3; ty <= 7; ty += 2) {
+          if (cell(1, ty) === "H") spots.push({ tx: 1, ty });
+          if (cell(14, ty) === "H") spots.push({ tx: 14, ty });
+        }
+        // низ через один, мимо двери
+        [1, 3, 5, 10, 12, 14].forEach((tx) => {
+          if (cell(tx, 9) === "H") spots.push({ tx, ty: 9 });
+        });
+        ctx.globalAlpha = 0.8;
+        spots.forEach((o, i) => {
+          CP.draw(ctx, motifs[i % 2], {
             x: (o.tx + 0.5) * T - cam.x,
             y: (o.ty + 0.5) * T - cam.y,
-            scale: o.scale,
+            scale: 0.95,
             color: "#c8a878",
             lineWidth: 1,
           });
-        }
+        });
         ctx.globalAlpha = 1;
       }
 

@@ -462,6 +462,23 @@ window.Sprites = (() => {
     [9, 6, 5, 6, [180, 55, 70]], [10, 7, 3, 4, [210, 90, 100]],
     [3, 5, 3, 2, [140, 40, 55]], [10, 5, 3, 2, [140, 40, 55]],
   ]);
+
+  // окно избы: рама + лунный свет
+  const izbaWindow = make(16, 16, (data, w, h) => {
+    for (let i = 0; i < data.length; i += 4) data[i + 3] = 0;
+    // рама
+    for (let y = 1; y < 15; y++)
+      for (let x = 1; x < 15; x++) {
+        const rim = x === 1 || y === 1 || x === 14 || y === 14 || x === 7 || y === 7;
+        if (rim) set(data, w, h, x, y, shade([110, 75, 40], ((x + y) & 1) ? -0.1 : 0.1));
+        else set(data, w, h, x, y, [160, 195, 230]);
+      }
+    // блик
+    set(data, w, h, 3, 3, [230, 240, 255]);
+    set(data, w, h, 4, 3, [220, 235, 255]);
+    set(data, w, h, 3, 4, [210, 230, 250]);
+  });
+
   const snowdrift = make(16, 16, (data, w, h) => {
     for (let i = 0; i < data.length; i += 4) data[i + 3] = 0;
     for (let y = 4; y < 15; y++)
@@ -589,6 +606,7 @@ window.Sprites = (() => {
     cross,
     crate,
     mittens,
+    izbaWindow,
     snowdrift,
     door,
     amulet,
