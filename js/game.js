@@ -467,17 +467,18 @@
           label: "Коромысло",
           draw: (x, y) => ctx.drawImage(S.yokeItem, x - 8, y - 8),
           use() {
-            const takeYoke = () => {
+            // до разговора с мачехой — только осмотр, взять нельзя
+            if (!st.metStepmother) {
               AudioSFX.interact();
-              st.hasYoke = true;
-              if (st.metStepmother) setObj("Выйдите наружу через дверь");
-              else setObj("Поговорите с мачехой");
-              save();
-              talk("yoke");
-              buildObjects();
-            };
-            // коромысло всегда просто коромысло — диалог мачехи только у неё
-            takeYoke();
+              talk("yokeLook");
+              return;
+            }
+            AudioSFX.interact();
+            st.hasYoke = true;
+            setObj("Выйдите наружу через дверь");
+            save();
+            talk("yoke");
+            buildObjects();
           },
         });
       }

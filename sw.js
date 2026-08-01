@@ -1,4 +1,4 @@
-const CACHE = "gom-html5-v3";
+const CACHE = "gom-html5-v4";
 const ASSETS = [
   "./",
   "./index.html",
