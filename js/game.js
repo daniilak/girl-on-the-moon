@@ -346,7 +346,6 @@
     fadeDir = 1;
     fadeCb = midCb || null;
     fadeDone = afterCb || null;
-    AudioSFX.fade();
   }
 
   function goAct(name, opts) {
@@ -1219,7 +1218,7 @@
       windT -= dt;
       if (windT <= 0) {
         windT = 4 + Math.random() * 6;
-        if (Math.random() > 0.4) AudioSFX.wind();
+        // без звука ветра — только визуальный порыв снега
         for (const p of snow) p.drift += (Math.random() - 0.5) * 10;
       }
       const windMul = st.chase ? 1.6 : 1;
