@@ -204,7 +204,7 @@
     }
     if (st.act === "moon") AudioSFX.setMusic("moon");
     else if (st.act === "izba") AudioSFX.setMusic("izba");
-    else if (st.chase && !st.escaped) AudioSFX.setMusic("chase");
+    else if (st.chase && ascend < 0) AudioSFX.setMusic("chase");
     else AudioSFX.setMusic("night");
   }
 
@@ -264,9 +264,10 @@
   }
 
   function updateChaseHud() {
-    const chasing = st.act === "outside" && st.chase && !st.escaped;
-    ui.btnDash.classList.toggle("hidden", !chasing);
-    ui.fearWrap.classList.toggle("hidden", !chasing && !praying);
+    // рывок доступен всю погоню до вознесения (и у камня, и во время молитвы)
+    const chaseLive = st.act === "outside" && st.chase && ascend < 0;
+    ui.btnDash.classList.toggle("hidden", !chaseLive);
+    ui.fearWrap.classList.toggle("hidden", !(chaseLive && (!st.escaped || praying)));
     ui.prayWrap.classList.toggle("hidden", !praying);
     updateBucketHud();
   }
@@ -845,11 +846,15 @@
 
   function escapeWitches() {
     st.escaped = true;
+    st.check = { x: ALTAR_POS.x, y: ALTAR_POS.y + 14 };
+    // отбросить ведьм далеко — игрок у камня, рывок остаётся
     witches = [
-      { x: 10 * T, y: 24 * T, sp: 40, phase: 0 },
-      { x: 16 * T, y: 25 * T, sp: 44, phase: 1 },
-      { x: 13 * T, y: 22 * T, sp: 38, phase: 2 },
+      { x: 6 * T, y: 30 * T, sp: 42, phase: 0 },
+      { x: 20 * T, y: 30 * T, sp: 46, phase: 1 },
+      { x: 13 * T, y: 31 * T, sp: 40, phase: 2 },
     ];
+    st.fear = 0;
+    ui.fearFill.style.width = "0%";
     AudioSFX.fearOn(false);
     fearing = false;
     refreshOutsideObjective();
@@ -866,8 +871,9 @@
     prayProgress = 0;
     prayHold = true;
     locked = false;
+    st.check = { x: ALTAR_POS.x, y: ALTAR_POS.y + 14 };
     updateChaseHud();
-    setObj("Удерживайте Действие!");
+    setObj("Удерживайте Действие у камня!");
     AudioSFX.pray();
   }
 
@@ -881,6 +887,26 @@
     talk("pray", () => beginAscend());
   }
 
+  function resetPrayCheckpoint() {
+    st.px = ALTAR_POS.x;
+    st.py = ALTAR_POS.y + 14;
+    st.check = { x: st.px, y: st.py };
+    st.fear = 0;
+    ui.fearFill.style.width = "0%";
+    prayProgress = 0;
+    ui.prayFill.style.width = "0%";
+    witches = [
+      { x: 5 * T, y: 29 * T, sp: 42, phase: 0 },
+      { x: 21 * T, y: 29 * T, sp: 46, phase: 1.2 },
+      { x: 13 * T, y: 31 * T, sp: 40, phase: 2.4 },
+    ];
+    praying = true;
+    setObj("Удерживайте Действие у камня!");
+    updateChaseHud();
+    unstick();
+    save();
+  }
+
   function failPray() {
     praying = false;
     prayProgress = 0;
@@ -891,14 +917,8 @@
     shake = 0.5;
     updateChaseHud();
     talk("caughtPray", () => {
-      st.finished = true;
-      st.badEnd = true;
-      save();
-      playing = false;
-      ui.btnPause.classList.add("hidden");
-      ui.creditsText.textContent = "Молитва не успела… Попробуйте снова.";
-      ui.credits.classList.remove("hidden");
-      AudioSFX.setMusic("off");
+      resetPrayCheckpoint();
+      locked = false;
     });
   }
 
@@ -985,8 +1005,9 @@
   }
 
   function tryDash() {
-    if (paused) return;
-    if (!(st.act === "outside" && st.chase && !st.escaped) || locked) return;
+    if (paused || locked || ascend >= 0) return;
+    // рывок во всей фазе погони, включая укрытие у камня и молитву
+    if (!(st.act === "outside" && st.chase)) return;
     if (dashCd > 0 || dashT > 0) return;
     dashT = 0.15;
     dashCd = 0.7;
@@ -1016,11 +1037,62 @@
     ].some(([a, b]) => solid((a / T) | 0, (b / T) | 0));
   }
 
+  // ведьмы — сквозь деревья/сугробы, только стены и вода
+  function solidWitch(tx, ty) {
+    const ch = cell(tx, ty);
+    return ch === "#" || ch === "w";
+  }
+  function collideWitch(x, y) {
+    const r = 3;
+    return [
+      [x - r, y - r],
+      [x + r, y - r],
+      [x - r, y + r],
+      [x + r, y + r],
+    ].some(([a, b]) => solidWitch((a / T) | 0, (b / T) | 0));
+  }
+
   function moveEntity(ent, vx, vy, dt, spd) {
     const nx = ent.x + vx * spd * dt;
     if (!collide(nx, ent.y)) ent.x = nx;
     const ny = ent.y + vy * spd * dt;
     if (!collide(ent.x, ny)) ent.y = ny;
+  }
+
+  function moveWitch(ent, vx, vy, dt, spd) {
+    const ox = ent.x;
+    const oy = ent.y;
+    const nx = ent.x + vx * spd * dt;
+    if (!collideWitch(nx, ent.y)) ent.x = nx;
+    const ny = ent.y + vy * spd * dt;
+    if (!collideWitch(ent.x, ny)) ent.y = ny;
+    // если застряла — сдвиг в сторону цели / случайный unstick
+    if (ent.x === ox && ent.y === oy && (vx || vy)) {
+      const side = Math.abs(vx) >= Math.abs(vy);
+      if (side) {
+        const tryY = oy + (vy || (Math.random() > 0.5 ? 1 : -1)) * spd * dt;
+        if (!collideWitch(ox, tryY)) ent.y = tryY;
+        const tryX2 = ox + (vx >= 0 ? 1 : -1) * spd * dt * 0.5;
+        if (!collideWitch(tryX2, ent.y)) ent.x = tryX2;
+      } else {
+        const tryX = ox + (vx || (Math.random() > 0.5 ? 1 : -1)) * spd * dt;
+        if (!collideWitch(tryX, oy)) ent.x = tryX;
+        const tryY2 = oy + (vy >= 0 ? 1 : -1) * spd * dt * 0.5;
+        if (!collideWitch(ent.x, tryY2)) ent.y = tryY2;
+      }
+      // крайний случай — телепорт чуть к игроку
+      if (ent.x === ox && ent.y === oy) {
+        const ddx = st.px - ent.x;
+        const ddy = st.py - ent.y;
+        const dd = Math.hypot(ddx, ddy) || 1;
+        const tx = ent.x + (ddx / dd) * 8;
+        const ty = ent.y + (ddy / dd) * 8;
+        if (!collideWitch(tx, ty)) {
+          ent.x = tx;
+          ent.y = ty;
+        }
+      }
+    }
   }
 
   function readPad() {
@@ -1184,13 +1256,9 @@
     }
 
     if (praying) {
-      const holding =
-        prayHold ||
-        keys.e ||
-        keys.E ||
-        keys.Enter ||
-        keys[" "];
-      if (holding) {
+      const holding = prayHold || keys.e || keys.E || keys.Enter;
+      const nearAltar = Math.hypot(st.px - ALTAR_POS.x, st.py - ALTAR_POS.y) < 36;
+      if (holding && nearAltar) {
         prayProgress += dt * (st.hasAmulet ? 1.25 : 1);
         ui.prayFill.style.width = Math.min(100, (prayProgress / PRAY_NEED) * 100) + "%";
         if ((prayProgress * 8) | 0 !== ((prayProgress - dt) * 8) | 0) AudioSFX.pray();
@@ -1199,24 +1267,24 @@
           return;
         }
       } else {
-        prayProgress = Math.max(0, prayProgress - dt * 0.35);
+        prayProgress = Math.max(0, prayProgress - dt * 0.45);
         ui.prayFill.style.width = Math.min(100, (prayProgress / PRAY_NEED) * 100) + "%";
       }
-      // ведьмы подходят во время молитвы
-      if (!locked) {
+      // движение и рывок во время молитвы разрешены (ниже общий блок)
+      // ведьмы гонятся за игроком
+      if (!locked && !paused) {
         for (const w of witches) {
-          const dx = ALTAR_POS.x - w.x;
-          const dy = ALTAR_POS.y - w.y;
+          const dx = st.px - w.x;
+          const dy = st.py - w.y;
           const d = Math.hypot(dx, dy) || 1;
-          moveEntity(w, dx / d, dy / d, dt, w.sp * 0.85);
-          if (d < 18) {
+          moveWitch(w, dx / d, dy / d, dt, w.sp * 0.75);
+          if (d < 14) {
             failPray();
             return;
           }
         }
       }
-      nearObj = findNear();
-      return;
+      // не return — даём игроку ходить
     }
 
     if (!locked) {
@@ -1274,13 +1342,12 @@
         ui.fearFill.style.width = st.fear + "%";
         if (!coverHintShown) {
           coverHintShown = true;
-          // лёгкая подсказка без блокировки — только первый раз через prompt уже есть
         }
       }
     }
 
     let nearFear = false;
-    if (st.act === "outside" && st.chase && !st.escaped && !locked && !paused) {
+    if (st.act === "outside" && st.chase && !st.escaped && !locked && !paused && !praying) {
       const playerHidden = inCover(st.px, st.py);
       for (const w of witches) {
         if (moonSafe(w.x, w.y)) continue;
@@ -1289,11 +1356,10 @@
         const d = Math.hypot(dx, dy) || 1;
         const sees = hasLOS(w.x, w.y, st.px, st.py) && !playerHidden;
         if (sees) {
-          moveEntity(w, dx / d, dy / d, dt, w.sp);
+          moveWitch(w, dx / d, dy / d, dt, w.sp);
         } else {
-          // блуждание / потеря цели
           const ang = anim * 0.7 + w.phase;
-          moveEntity(w, Math.cos(ang), Math.sin(ang), dt, w.sp * 0.35);
+          moveWitch(w, Math.cos(ang), Math.sin(ang), dt, w.sp * 0.35);
         }
         if (d < 14 && sees) {
           nearFear = true;
@@ -1308,14 +1374,14 @@
         }
       }
     }
-    // после побега ведьмы ещё бродят у поляны, но слабее
+    // после укрытия у камня (ещё не молится) ведьмы подходят медленнее
     if (st.act === "outside" && st.escaped && !praying && !locked && witches.length) {
       for (const w of witches) {
         if (moonSafe(w.x, w.y)) continue;
         const dx = st.px - w.x;
         const dy = st.py - w.y;
         const d = Math.hypot(dx, dy) || 1;
-        if (d > 40) moveEntity(w, dx / d, dy / d, dt, w.sp * 0.55);
+        if (d > 50) moveWitch(w, dx / d, dy / d, dt, w.sp * 0.4);
       }
     }
 
@@ -1330,7 +1396,8 @@
       ui.prompt.textContent = nearObj.label + " · " + verb;
       ui.prompt.classList.remove("hidden");
     } else if (praying) {
-      ui.prompt.textContent = "Удерживайте Действие";
+      const nearAltar = Math.hypot(st.px - ALTAR_POS.x, st.py - ALTAR_POS.y) < 36;
+      ui.prompt.textContent = nearAltar ? "Удерживайте Действие" : "Вернитесь к камню";
       ui.prompt.classList.remove("hidden");
     } else {
       ui.prompt.classList.add("hidden");
@@ -1869,14 +1936,13 @@
     }
     if (e.key === " ") {
       e.preventDefault();
-      if (praying) prayHold = true;
-      else tryDash();
+      tryDash();
     }
   });
   window.addEventListener("keyup", (e) => {
     keys[e.key] = false;
-    if (e.key === "e" || e.key === "E" || e.key === "Enter" || e.key === " ") {
-      if (!(keys.e || keys.E || keys.Enter || keys[" "])) prayHold = false;
+    if (e.key === "e" || e.key === "E" || e.key === "Enter") {
+      if (!(keys.e || keys.E || keys.Enter)) prayHold = false;
     }
   });
   window.addEventListener("resize", () => {
