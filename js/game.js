@@ -99,6 +99,7 @@
       act: "izba",
       hasYoke: false,
       hasMittens: false,
+      sawMittens: false,
       needMittens: false,
       metStepmother: false,
       hasWater: false,
@@ -412,35 +413,30 @@
       r: 20,
       label: "Сугроб",
       draw: (x, y) => ctx.drawImage(S.snowdrift, x - 8, y - 8),
-      use() {
-        if (!st.hasYoke) {
-          talk("needYoke");
-          return;
-        }
-        if (!st.hasMittens) {
-          st.needMittens = true;
-          refreshOutsideObjective();
-          save();
-          talk("needMittens");
-          buildObjects();
-          return;
-        }
-        AudioSFX.interact();
-        if (which === 2) st.clearedDrift2 = true;
-        else st.clearedDrift = true;
-        applyPatches();
-        refreshOutsideObjective();
-        updateBucketHud();
-        save();
-        talk(which === 2 ? "drift2" : "drift", () => {
-          if (!st.heardRiver && (st.clearedDrift || st.clearedDrift2)) {
-            st.heardRiver = true;
+          use() {
+            if (!st.hasYoke) {
+              talk("needYoke");
+              return;
+            }
+            if (!st.hasMittens) {
+              st.needMittens = true;
+              refreshOutsideObjective();
+              save();
+              talk(st.sawMittens ? "needMittensRemember" : "needMittens");
+              buildObjects();
+              return;
+            }
+            AudioSFX.interact();
+            if (which === 2) st.clearedDrift2 = true;
+            else st.clearedDrift = true;
+            applyPatches();
+            refreshOutsideObjective();
+            updateBucketHud();
             save();
-            talk("river");
-          }
-        });
-        buildObjects();
-      },
+            // после расчистки — только «найти прорубь», без спойлера про лёд
+            talk(which === 2 ? "drift2" : "drift");
+            buildObjects();
+          },
     });
   }
 
@@ -474,18 +470,13 @@
             const takeYoke = () => {
               AudioSFX.interact();
               st.hasYoke = true;
-              setObj("Выйдите наружу через дверь");
+              if (st.metStepmother) setObj("Выйдите наружу через дверь");
+              else setObj("Поговорите с мачехой");
               save();
               talk("yoke");
               buildObjects();
             };
-            if (!st.metStepmother) {
-              st.metStepmother = true;
-              setObj("Возьмите коромысло у стены");
-              save();
-              talk("stepmother", takeYoke);
-              return;
-            }
+            // коромысло всегда просто коромысло — диалог мачехи только у неё
             takeYoke();
           },
         });
@@ -536,11 +527,14 @@
           draw: (x, y) => ctx.drawImage(S.mittens, x - 8, y - 8),
           use() {
             if (!st.needMittens) {
+              st.sawMittens = true;
+              save();
               talk("mittensEarly");
               return;
             }
             AudioSFX.interact();
             st.hasMittens = true;
+            st.sawMittens = true;
             refreshOutsideObjective();
             save();
             talk("mittens");
@@ -607,6 +601,22 @@
             return;
           }
           if (st.waterCount >= BUCKETS_NEED) return;
+          // прорубь видна — только здесь рассказываем про неё
+          if (!st.heardRiver) {
+            st.heardRiver = true;
+            save();
+            talk("river", () => {
+              AudioSFX.scoop();
+              st.waterCount += 1;
+              st.px = HOLE_POS.x;
+              st.py = HOLE_POS.y - T;
+              updateBucketHud();
+              refreshOutsideObjective();
+              save();
+              talk("water1");
+            });
+            return;
+          }
           AudioSFX.scoop();
           st.waterCount += 1;
           st.px = HOLE_POS.x;
@@ -1467,38 +1477,25 @@
         }
       }
 
-      // чувашский ковёр и вышивка в избе
+      // узоры только на брёвнах стен (H), не посреди пола
       if (st.act === "izba" && CP) {
-        for (let i = 0; i < 4; i++) {
-          const cx = (5.5 + i) * T - cam.x + 8;
-          const cy = 6.5 * T - cam.y + 8;
-          ctx.globalAlpha = 0.85;
-          if (patternSprites.carpet) ctx.drawImage(patternSprites.carpet, cx - 8, cy - 8);
-          else
-            CP.draw(ctx, "center_fill", {
-              x: cx,
-              y: cy,
-              scale: 1.6,
-              color: "#8a5040",
-              fillColor: "#a06048",
-              lineWidth: 1,
-            });
+        const wallOrn = [
+          { tx: 3, ty: 1, id: "snezhinka3", scale: 1.1 },
+          { tx: 12, ty: 1, id: "tree", scale: 1.0 },
+          { tx: 1, ty: 4, id: "center", scale: 1.2 },
+          { tx: 14, ty: 5, id: "serdtse", scale: 1.0 },
+        ];
+        ctx.globalAlpha = 0.75;
+        for (const o of wallOrn) {
+          if (cell(o.tx, o.ty) !== "H") continue;
+          CP.draw(ctx, o.id, {
+            x: (o.tx + 0.5) * T - cam.x,
+            y: (o.ty + 0.5) * T - cam.y,
+            scale: o.scale,
+            color: "#c8a878",
+            lineWidth: 1,
+          });
         }
-        ctx.globalAlpha = 0.7;
-        CP.draw(ctx, "snezhinka3", {
-          x: 4.2 * T - cam.x,
-          y: 4.2 * T - cam.y,
-          scale: 1.4,
-          color: "#c8a878",
-          lineWidth: 1,
-        });
-        CP.draw(ctx, "tree", {
-          x: 12.2 * T - cam.x,
-          y: 4.0 * T - cam.y,
-          scale: 1.2,
-          color: "#b89870",
-          lineWidth: 1,
-        });
         ctx.globalAlpha = 1;
       }
 
@@ -1928,16 +1925,16 @@
       CP.draw(g, "snezhinka1", {
         x: creditsOrn.width / 2,
         y: creditsOrn.height / 2,
-        scale: 2.0,
+        scale: 6.0,
         color: "rgba(200,220,255,0.4)",
-        lineWidth: 1,
+        lineWidth: 1.5,
       });
       CP.draw(g, "serdtse", {
         x: creditsOrn.width / 2,
-        y: creditsOrn.height / 2 + 4,
-        scale: 2.2,
+        y: creditsOrn.height / 2 + 8,
+        scale: 6.6,
         color: "rgba(220,180,200,0.55)",
-        lineWidth: 1.1,
+        lineWidth: 1.6,
       });
     }
   }
