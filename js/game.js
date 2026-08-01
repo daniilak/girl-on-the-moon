@@ -789,6 +789,7 @@
               playing = false;
               ui.btnPause.classList.add("hidden");
               ui.creditsText.textContent = "Падчерица ушла на луну - и ведьмы её не достали.";
+              paintCreditsArt(true);
               ui.credits.classList.remove("hidden");
               AudioSFX.setMusic("moon");
             });
@@ -1759,6 +1760,7 @@
       ui.creditsText.textContent = st.badEnd
         ? "Молитва не успела… Попробуйте снова."
         : "Падчерица ушла на луну - и ведьмы её не достали.";
+      paintCreditsArt(!st.badEnd);
       ui.credits.classList.remove("hidden");
       return;
     }
@@ -1958,23 +1960,41 @@
     g.fillStyle = "#0b1524";
     g.fillRect(0, 0, W, H);
     if (CP) CP.paintMenuFrame(g, W, H);
-    // одна девушка — силуэт на луне (без второй снизу)
-    g.drawImage(S.bigMoon, W / 2 - 48, 20, 96, 96);
+    // старт: только круглая луна, без девушки
+    g.drawImage(S.bigMoon, W / 2 - 56, H / 2 - 56, 112, 112);
+  }
+
+  function paintCreditsArt(success) {
+    const c = document.getElementById("creditsArt");
+    if (!c) return;
+    const g = c.getContext("2d");
+    const W = c.width;
+    const H = c.height;
+    g.imageSmoothingEnabled = false;
+    g.fillStyle = "#0b1524";
+    g.fillRect(0, 0, W, H);
+    // один узор
     if (CP) {
-      CP.draw(g, "zvezda", {
+      CP.draw(g, "serdtse", {
         x: W / 2,
-        y: 60,
-        scale: 4.4,
-        color: "rgba(220,230,255,0.35)",
-        lineWidth: 1.5,
+        y: H - 22,
+        scale: 3.2,
+        color: "rgba(220,180,200,0.55)",
+        lineWidth: 1.4,
       });
     }
-    g.drawImage(S.moonGirl, W / 2 - 24, 44, 48, 48);
+    // успешный конец — луна с девушкой и коромыслом
+    g.drawImage(S.bigMoon, W / 2 - 56, 18, 112, 112);
+    if (success) {
+      g.drawImage(S.moonGirl, W / 2 - 28, 48, 56, 56);
+    }
   }
+
+  // по умолчанию (если открыли экран из сейва) — рисуем при показе
+  paintCreditsArt(true);
 
   if (CP) {
     const pauseOrn = document.getElementById("pauseOrnament");
-    const creditsOrn = document.getElementById("creditsOrnament");
     if (pauseOrn) {
       const g = pauseOrn.getContext("2d");
       g.clearRect(0, 0, pauseOrn.width, pauseOrn.height);
@@ -1984,24 +2004,6 @@
         scale: 2.4,
         color: "rgba(180,210,255,0.4)",
         lineWidth: 1.2,
-      });
-    }
-    if (creditsOrn) {
-      const g = creditsOrn.getContext("2d");
-      g.clearRect(0, 0, creditsOrn.width, creditsOrn.height);
-      CP.draw(g, "snezhinka1", {
-        x: creditsOrn.width / 2,
-        y: creditsOrn.height / 2,
-        scale: 6.0,
-        color: "rgba(200,220,255,0.4)",
-        lineWidth: 1.5,
-      });
-      CP.draw(g, "serdtse", {
-        x: creditsOrn.width / 2,
-        y: creditsOrn.height / 2 + 8,
-        scale: 6.6,
-        color: "rgba(220,180,200,0.55)",
-        lineWidth: 1.6,
       });
     }
   }

@@ -458,6 +458,15 @@ html, body {
   max-height: 140px;
 }
 
+#creditsArt {
+  display: block;
+  margin: 0 auto 12px;
+  image-rendering: pixelated;
+  width: 192px;
+  height: 192px;
+  max-width: 100%;
+}
+
 #menuArt {
   display: block;
   margin: 0 auto 4px;
