@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#071018" />
+  <meta name="description" content="Чувашская сказка — мобильная бродилка «Девушка на луне»" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>Девушка на луне</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" aria-label="Игровое поле"></canvas>
+
+    <div id="hud">
+      <div id="hudTop">
+        <div id="objBox">
+          <span id="objLabel">Цель</span>
+          <span id="objective">-</span>
+        </div>
+        <button type="button" id="btnPause" class="icon-btn hidden" aria-label="Пауза">Ⅱ</button>
+      </div>
+      <div id="bucketWrap" class="hidden">
+        <span>Вёдра</span>
+        <span id="bucketCount">0/2</span>
+      </div>
+      <div id="fearWrap" class="hidden">
+        <span>Страх</span>
+        <div id="fearBar"><i id="fearFill"></i></div>
+      </div>
+      <div id="prayWrap" class="hidden">
+        <span>Молитва</span>
+        <div id="prayBar"><i id="prayFill"></i></div>
+      </div>
+    </div>
+
+    <div id="prompt" class="hidden" role="status">A</div>
+
+    <div id="dialogue" class="hidden" role="dialog" aria-live="polite">
+      <div id="dlgRow">
+        <canvas id="dlgPortrait" width="48" height="48" aria-hidden="true"></canvas>
+        <div id="dlgBody">
+          <div id="dlgSpeaker"></div>
+          <div id="dlgText"></div>
+        </div>
+      </div>
+      <button type="button" id="dlgNext">Далее</button>
+    </div>
+
+    <div id="touch">
+      <div id="dpad" aria-label="Крестовина">
+        <button type="button" class="dbtn" data-dir="up" id="dUp" aria-label="Вверх">▲</button>
+        <button type="button" class="dbtn" data-dir="left" id="dLeft" aria-label="Влево">◀</button>
+        <button type="button" class="dbtn" data-dir="right" id="dRight" aria-label="Вправо">▶</button>
+        <button type="button" class="dbtn" data-dir="down" id="dDown" aria-label="Вниз">▼</button>
+        <div class="dcenter"></div>
+      </div>
+      <div id="btns">
+        <button type="button" id="btnDash" class="face-btn hidden" aria-label="Рывок">Рывок</button>
+        <button type="button" id="btnAct" class="face-btn primary" aria-label="Действие">Действие</button>
+      </div>
+    </div>
+
+    <div id="menu" class="screen">
+      <div class="card">
+        <canvas id="menuArt" width="192" height="192"></canvas>
+        <h1>Девушка на луне</h1>
+        <p>Чувашская сказка</p>
+        <button type="button" id="btnNew" class="big">Играть</button>
+        <button type="button" id="btnContinue" class="big ghost" disabled>Продолжить</button>
+        <button type="button" id="btnSettings" class="big ghost">Настройки</button>
+        <p class="credit">Узоры · chuvash-patterns · CC0</p>
+      </div>
+    </div>
+
+    <div id="pause" class="screen hidden">
+      <div class="card">
+        <canvas class="ornament" id="pauseOrnament" width="280" height="64" aria-hidden="true"></canvas>
+        <h2>Пауза</h2>
+        <p class="muted">Ночь ждёт…</p>
+        <p class="hint">ПК: WASD / стрелки · E / Enter · Пробел · Esc</p>
+        <p class="hint">Телефон: крест · Действие · Рывок</p>
+        <button type="button" id="btnResume" class="big">Продолжить</button>
+        <button type="button" id="btnPauseSettings" class="big ghost">Настройки</button>
+        <button type="button" id="btnPauseMenu" class="big ghost">В меню</button>
+      </div>
+    </div>
+
+    <div id="settings" class="screen hidden">
+      <div class="card settings-card">
+        <h2>Настройки</h2>
+        <label class="set-row">
+          <span>Громкость</span>
+          <input type="range" id="setMaster" min="0" max="100" value="70" />
+        </label>
+        <label class="set-row">
+          <span>Музыка</span>
+          <input type="range" id="setMusic" min="0" max="100" value="45" />
+        </label>
+        <label class="set-row">
+          <span>Эффекты</span>
+          <input type="range" id="setSfx" min="0" max="100" value="100" />
+        </label>
+        <label class="set-check">
+          <input type="checkbox" id="setMute" />
+          <span>Без звука</span>
+        </label>
+        <label class="set-check">
+          <input type="checkbox" id="setVibrate" checked />
+          <span>Вибрация</span>
+        </label>
+        <label class="set-check">
+          <input type="checkbox" id="setSwipe" />
+          <span>Свайп вместо креста</span>
+        </label>
+        <button type="button" id="btnSettingsBack" class="big">Назад</button>
+      </div>
+    </div>
+
+    <div id="credits" class="screen hidden">
+      <div class="card">
+        <canvas class="ornament" id="creditsOrnament" width="280" height="72" aria-hidden="true"></canvas>
+        <h2>Конец</h2>
+        <p id="creditsText">Падчерица ушла на луну - и ведьмы её не достали.</p>
+        <p class="muted">По мотивам чувашской народной сказки</p>
+        <button type="button" id="btnMenu" class="big">В меню</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/settings.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/patterns.js"></script>
+  <script src="js/dialogue.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/game.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
