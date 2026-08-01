@@ -85,7 +85,10 @@ window.Sprites = (() => {
     path: tileTex([150, 140, 120], [120, 110, 90], { cracks: true }),
     path2: tileTex([160, 148, 125], [110, 100, 82], { cracks: true }),
     wood: tileTex([140, 96, 52], [96, 64, 32], { grain: 1 }),
-    woodDark: tileTex([90, 58, 30], [60, 38, 18], { grain: 1 }),
+    // пол избы — горизонтальные доски (светлее)
+    floor: tileTex([168, 122, 72], [130, 90, 48], { grain: 0.35, cracks: true }),
+    // стены-сруб — тёмные брёвна + явная кайма
+    woodDark: tileTex([90, 58, 30], [60, 38, 18], { grain: 1, border: [40, 26, 14] }),
     wall: tileTex([42, 52, 72], [28, 34, 48], { cracks: true }),
     ice: tileTex([170, 220, 245], [220, 240, 255], { sparkle: true }),
     // Brighter animated-looking water variants (old style feel)
@@ -102,7 +105,7 @@ window.Sprites = (() => {
     switch (ch) {
       case ".": return v ? tiles.snow : tiles.snow2;
       case "p": return v ? tiles.path : tiles.path2;
-      case "=": return tiles.wood;
+      case "=": return tiles.floor;
       case "H": return tiles.woodDark;
       case "#": return tiles.wall;
       case "~": return tiles.ice;
@@ -113,7 +116,7 @@ window.Sprites = (() => {
       case "I": return tiles.hole;
       case "M": return tiles.moon;
       case "T": return v ? tiles.snow : tiles.snow2;
-      case "F": return tiles.wood;
+      case "F": return tiles.floor;
       case "B":
       case "D":
         return tiles.drift;
