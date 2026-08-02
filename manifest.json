@@ -1,7 +1,7 @@
 {
   "name": "Девушка на луне",
   "short_name": "На луне",
-  "description": "Чувашская сказка — мобильная бродилка",
+  "description": "Короткая мобильная HTML5-игра по мотивам чувашской народной сказки «Девушка на луне»",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
